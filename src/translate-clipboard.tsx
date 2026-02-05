@@ -98,7 +98,8 @@ export default function TranslateClipboard() {
 					if (job.status === "failed") {
 						setState({
 							type: "error",
-							message: job.error || "Translation failed",
+							message:
+								"No image in clipboard!\n\nTake a screenshot with **Cmd+Ctrl+Shift+4**",
 						});
 						return;
 					}
