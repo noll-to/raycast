@@ -10,14 +10,12 @@ import {
 import fs from "fs/promises";
 import path from "path";
 import { useEffect, useState } from "react";
-import { NOLL_API_URL } from "./lib/config";
 import { pollJob, startTranslation } from "./lib/noll-api";
 import { getAccessToken } from "./lib/oauth";
 
 type State =
 	| { type: "loading" }
 	| { type: "authenticating" }
-	| { type: "debug"; token: string; apiTest: string }
 	| { type: "uploading" }
 	| { type: "translating"; progress: number }
 	| { type: "ready"; imageBase64: string; mimeType: string }
@@ -38,15 +36,9 @@ export default function TranslateClipboard() {
 
 		async function run() {
 			try {
-				// 1. FIRST: Authenticate (before anything else)
+				// 1. Authenticate first
 				setState({ type: "authenticating" });
-				console.log("Starting authentication...");
-
 				const token = await getAccessToken();
-				console.log(
-					"Got token:",
-					token ? `${token.substring(0, 20)}...` : "EMPTY",
-				);
 
 				if (cancelled) return;
 
@@ -58,37 +50,7 @@ export default function TranslateClipboard() {
 					return;
 				}
 
-				// 2. DEBUG: Test the token with a simple API call
-				console.log("Testing token with API...");
-				let apiTest = "Not tested";
-				try {
-					const testResponse = await fetch(
-						`${NOLL_API_URL}/api/ext/job/test-123`,
-						{
-							method: "GET",
-							headers: {
-								Authorization: `Bearer ${token}`,
-							},
-						},
-					);
-					apiTest = `Status: ${testResponse.status}, Body: ${await testResponse.text()}`;
-					console.log("API test result:", apiTest);
-				} catch (e) {
-					apiTest = `Error: ${e instanceof Error ? e.message : String(e)}`;
-					console.log("API test error:", apiTest);
-				}
-
-				// 3. DEBUG: Show token and API test result, then STOP
-				setState({
-					type: "debug",
-					token: token.substring(0, 50) + "...",
-					apiTest,
-				});
-				return;
-
-				// ============ EVERYTHING BELOW IS KEPT BUT WON'T RUN ============
-
-				// 4. Read clipboard
+				// 2. Read clipboard
 				const { file } = await Clipboard.read();
 				if (!file?.startsWith("file://")) {
 					setState({
@@ -99,7 +61,7 @@ export default function TranslateClipboard() {
 					return;
 				}
 
-				// 5. Read image file
+				// 3. Read image file
 				const imagePath = decodeURI(file.substring(7));
 				const imageBuffer = await fs.readFile(imagePath);
 				const filename = path.basename(imagePath);
@@ -111,7 +73,7 @@ export default function TranslateClipboard() {
 							? "image/jpeg"
 							: "image/png";
 
-				// 6. Start translation
+				// 4. Start translation
 				setState({ type: "uploading" });
 				const { jobId } = await startTranslation(
 					token,
@@ -122,7 +84,7 @@ export default function TranslateClipboard() {
 
 				if (cancelled) return;
 
-				// 7. Poll for completion
+				// 5. Poll for completion
 				setState({ type: "translating", progress: 0 });
 
 				while (!cancelled) {
@@ -155,7 +117,6 @@ export default function TranslateClipboard() {
 			} catch (e) {
 				if (cancelled) return;
 				const message = e instanceof Error ? e.message : "Unknown error";
-				console.error("Error:", message);
 				setState({ type: "error", message });
 				await showToast({
 					style: Toast.Style.Failure,
@@ -183,27 +144,6 @@ export default function TranslateClipboard() {
 
 	if (state.type === "authenticating") {
 		return <Detail isLoading markdown="Signing in to Noll..." />;
-	}
-
-	// DEBUG STATE - show token and API test result
-	if (state.type === "debug") {
-		const markdown = `## Debug Info
-
-### Token
-\`\`\`
-${state.token}
-\`\`\`
-
-### API Test Result (GET /api/ext/job/test-123)
-\`\`\`
-${state.apiTest}
-\`\`\`
-
-**If you see a 404 or "Job not found" error above, that means the token IS working!**
-
-The Authorization header was accepted by the server.
-`;
-		return <Detail markdown={markdown} />;
 	}
 
 	if (state.type === "uploading") {
