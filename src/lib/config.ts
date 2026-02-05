@@ -1,5 +1,6 @@
 // Noll API configuration
-export const NOLL_API_URL = "https://noll.to";
+// IMPORTANT: Use www.noll.to to avoid 308 redirect which strips Authorization header
+export const NOLL_API_URL = "https://www.noll.to";
 
 // WorkOS OAuth configuration
 // Client ID is public and safe to include - we use PKCE so no client secret needed
