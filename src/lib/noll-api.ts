@@ -29,11 +29,18 @@ export async function startTranslation(
 	formData.append("image", blob, filename);
 	formData.append("targetLanguage", targetLanguage);
 
+	const headers = new Headers();
+	headers.set("Authorization", `Bearer ${token}`);
+	headers.set("User-Agent", "noll-raycast/1.0");
+
+	console.log(
+		"Starting translation with token:",
+		token.substring(0, 20) + "...",
+	);
+
 	const response = await fetch(`${NOLL_API_URL}/api/ext/translate`, {
 		method: "POST",
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
+		headers,
 		body: formData,
 	});
 
@@ -53,6 +60,7 @@ export async function pollJob(
 		method: "GET",
 		headers: {
 			Authorization: `Bearer ${token}`,
+			"User-Agent": "noll-raycast/1.0",
 		},
 	});
 
