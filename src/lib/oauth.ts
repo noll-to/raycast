@@ -12,66 +12,22 @@ const client = new OAuth.PKCEClient({
 	description: "Sign in to translate screenshots with Noll",
 });
 
-type TokenResponse = {
-	access_token: string;
-	refresh_token: string;
-	expires_in: number;
-};
-
-async function exchangeCode(
-	code: string,
-	codeVerifier: string,
-	redirectUri: string,
-): Promise<TokenResponse> {
-	const response = await fetch(`${NOLL_API_URL}/api/ext/auth/token`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			code,
-			codeVerifier,
-			redirectUri,
-		}),
-	});
-
-	if (!response.ok) {
-		const error = await response.text();
-		throw new Error(`Token exchange failed: ${error}`);
-	}
-
-	return response.json();
-}
-
-async function refreshTokens(refreshToken: string): Promise<TokenResponse> {
-	const response = await fetch(`${NOLL_API_URL}/api/ext/auth/refresh`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ refresh_token: refreshToken }),
-	});
-
-	if (!response.ok) {
-		const error = await response.text();
-		throw new Error(`Token refresh failed: ${error}`);
-	}
-
-	return response.json();
-}
-
-export async function getAccessToken(): Promise<string> {
+/**
+ * Authorize with Noll via WorkOS OAuth.
+ * This follows the Raycast OAuth guide pattern exactly.
+ */
+export async function authorize(): Promise<void> {
 	const tokenSet = await client.getTokens();
 
-	// 1. Valid token exists - use it
-	if (tokenSet?.accessToken && !tokenSet.isExpired()) {
-		return tokenSet.accessToken;
+	// If we have an access token, check if it needs refresh
+	if (tokenSet?.accessToken) {
+		if (tokenSet.refreshToken && tokenSet.isExpired()) {
+			await client.setTokens(await refreshTokens(tokenSet.refreshToken));
+		}
+		return;
 	}
 
-	// 2. Expired but has refresh token - refresh it
-	if (tokenSet?.refreshToken && tokenSet.isExpired()) {
-		const tokens = await refreshTokens(tokenSet.refreshToken);
-		await client.setTokens(tokens);
-		return tokens.access_token;
-	}
-
-	// 3. No token or no refresh token - full OAuth flow
+	// No token - full OAuth flow
 	const authRequest = await client.authorizationRequest({
 		endpoint: WORKOS_AUTHORIZE_ENDPOINT,
 		clientId: WORKOS_CLIENT_ID,
@@ -82,18 +38,70 @@ export async function getAccessToken(): Promise<string> {
 	});
 
 	const { authorizationCode } = await client.authorize(authRequest);
-
-	// Exchange code via Noll API (keeps client secret server-side)
-	const tokens = await exchangeCode(
-		authorizationCode,
-		authRequest.codeVerifier,
-		authRequest.redirectURI,
-	);
-
-	await client.setTokens(tokens);
-	return tokens.access_token;
+	await client.setTokens(await fetchTokens(authRequest, authorizationCode));
 }
 
+/**
+ * Get the access token, authorizing first if needed.
+ * Always reads from Raycast's secure token storage.
+ */
+export async function getAccessToken(): Promise<string> {
+	await authorize();
+	const tokenSet = await client.getTokens();
+	return tokenSet?.accessToken ?? "";
+}
+
+/**
+ * Exchange authorization code for tokens via Noll API.
+ */
+async function fetchTokens(
+	authRequest: OAuth.AuthorizationRequest,
+	authCode: string,
+): Promise<OAuth.TokenResponse> {
+	const response = await fetch(`${NOLL_API_URL}/api/ext/auth/token`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			code: authCode,
+			codeVerifier: authRequest.codeVerifier,
+			redirectUri: authRequest.redirectURI,
+		}),
+	});
+
+	if (!response.ok) {
+		console.error("fetch tokens error:", await response.text());
+		throw new Error(response.statusText);
+	}
+
+	return (await response.json()) as OAuth.TokenResponse;
+}
+
+/**
+ * Refresh expired tokens via Noll API.
+ */
+async function refreshTokens(
+	refreshToken: string,
+): Promise<OAuth.TokenResponse> {
+	const response = await fetch(`${NOLL_API_URL}/api/ext/auth/refresh`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ refresh_token: refreshToken }),
+	});
+
+	if (!response.ok) {
+		console.error("refresh tokens error:", await response.text());
+		throw new Error(response.statusText);
+	}
+
+	const tokenResponse = (await response.json()) as OAuth.TokenResponse;
+	// Preserve refresh token if not returned (some providers don't return it on refresh)
+	tokenResponse.refresh_token = tokenResponse.refresh_token ?? refreshToken;
+	return tokenResponse;
+}
+
+/**
+ * Log out by removing stored tokens.
+ */
 export async function logout(): Promise<void> {
 	await client.removeTokens();
 }
