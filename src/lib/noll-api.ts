@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import { NOLL_API_URL } from "./config";
 
 type StartTranslationResponse = {
@@ -24,14 +25,8 @@ export async function startTranslation(
 		throw new Error("No access token available");
 	}
 
-	const formData = new FormData();
-	const blob = new Blob([imageBuffer], { type: "image/png" });
-	formData.append("image", blob, filename);
-	formData.append("targetLanguage", targetLanguage);
-
-	const headers = new Headers();
-	headers.set("Authorization", `Bearer ${token}`);
-	headers.set("User-Agent", "noll-raycast/1.0");
+	// Send as JSON with base64 to avoid FormData header issues
+	const base64Image = imageBuffer.toString("base64");
 
 	console.log(
 		"Starting translation with token:",
@@ -40,8 +35,16 @@ export async function startTranslation(
 
 	const response = await fetch(`${NOLL_API_URL}/api/ext/translate`, {
 		method: "POST",
-		headers,
-		body: formData,
+		headers: {
+			Authorization: `Bearer ${token}`,
+			"Content-Type": "application/json",
+			"User-Agent": "noll-raycast/1.0",
+		},
+		body: JSON.stringify({
+			image: base64Image,
+			filename,
+			targetLanguage,
+		}),
 	});
 
 	if (!response.ok) {
@@ -49,7 +52,7 @@ export async function startTranslation(
 		throw new Error(`Failed to start translation: ${error}`);
 	}
 
-	return response.json();
+	return response.json() as Promise<StartTranslationResponse>;
 }
 
 export async function pollJob(
@@ -69,5 +72,5 @@ export async function pollJob(
 		throw new Error(`Failed to get job status: ${error}`);
 	}
 
-	return response.json();
+	return response.json() as Promise<JobStatus>;
 }
