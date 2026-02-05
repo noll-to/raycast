@@ -20,6 +20,10 @@ export async function startTranslation(
 	targetLanguage: string,
 	filename: string,
 ): Promise<StartTranslationResponse> {
+	if (!token) {
+		throw new Error("No access token available");
+	}
+
 	const formData = new FormData();
 	const blob = new Blob([imageBuffer], { type: "image/png" });
 	formData.append("image", blob, filename);
