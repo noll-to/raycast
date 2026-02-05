@@ -64,7 +64,7 @@ export default function TranslateClipboard() {
 				// 3. Read image file
 				const imagePath = decodeURI(file.substring(7));
 				const imageBuffer = await fs.readFile(imagePath);
-				const filename = path.basename(imagePath);
+				let filename = path.basename(imagePath);
 				const ext = path.extname(imagePath).toLowerCase();
 				const mimeType =
 					ext === ".png"
@@ -72,6 +72,11 @@ export default function TranslateClipboard() {
 						: ext === ".jpg" || ext === ".jpeg"
 							? "image/jpeg"
 							: "image/png";
+
+				// Ensure filename has an extension (macOS clipboard sometimes omits it)
+				if (!ext) {
+					filename = `${filename}.png`;
+				}
 
 				// 4. Start translation
 				setState({ type: "uploading" });
