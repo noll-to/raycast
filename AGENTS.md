@@ -148,11 +148,11 @@ https://raycast.com/redirect?packageName=noll
 
 ### Noll API (in `noll` repo)
 
-- [ ] `POST /api/ext/auth/token` - Exchange OAuth code for tokens
-- [ ] `POST /api/ext/auth/refresh` - Refresh expired tokens
-- [ ] `POST /api/ext/translate` - Start image translation job
-- [ ] `GET /api/ext/job/[jobId]` - Poll job status
-- [ ] Bearer token validation middleware
+- [x] `POST /api/ext/auth/token` - Exchange OAuth code for tokens
+- [x] `POST /api/ext/auth/refresh` - Refresh expired tokens
+- [x] `POST /api/ext/translate` - Start image translation job
+- [x] `GET /api/ext/job/[jobId]` - Poll job status
+- [x] Bearer token validation middleware
 - [ ] Add redirect URI to WorkOS dashboard
 
 ### Raycast Extension (this repo)
@@ -161,7 +161,7 @@ https://raycast.com/redirect?packageName=noll
 - [x] OAuth flow implementation (`src/lib/oauth.ts`)
 - [x] Noll API client (`src/lib/noll-api.ts`)
 - [x] Main translate command (`src/translate-clipboard.tsx`)
-- [ ] Get actual WorkOS client ID and update `src/lib/config.ts`
+- [x] Get actual WorkOS client ID and update `src/lib/config.ts`
 - [ ] Test end-to-end flow
 - [ ] Add extension icon (`assets/extension-icon.png`)
 - [ ] Publish to Raycast store (optional)
