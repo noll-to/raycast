@@ -2,6 +2,7 @@ import { NOLL_API_URL } from "./config";
 
 type StartTranslationResponse = {
 	jobId: string;
+	providerJobId: string;
 };
 
 type JobStatus = {
@@ -51,13 +52,23 @@ export async function startTranslation(
 export async function pollJob(
 	token: string,
 	jobId: string,
+	providerJobId: string,
+	targetLanguage: string,
 ): Promise<JobStatus> {
-	const response = await fetch(`${NOLL_API_URL}/api/ext/job/${jobId}`, {
-		method: "GET",
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
+	const params = new URLSearchParams({
+		providerJobId,
+		targetLanguage,
 	});
+
+	const response = await fetch(
+		`${NOLL_API_URL}/api/ext/job/${jobId}?${params}`,
+		{
+			method: "GET",
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		},
+	);
 
 	if (!response.ok) {
 		const error = await response.text();

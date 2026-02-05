@@ -80,7 +80,7 @@ export default function TranslateClipboard() {
 
 				// 4. Start translation
 				setState({ type: "uploading" });
-				const { jobId } = await startTranslation(
+				const { jobId, providerJobId } = await startTranslation(
 					token,
 					imageBuffer,
 					defaultLanguage,
@@ -93,7 +93,12 @@ export default function TranslateClipboard() {
 				setState({ type: "translating", progress: 0 });
 
 				while (!cancelled) {
-					const job = await pollJob(token, jobId);
+					const job = await pollJob(
+						token,
+						jobId,
+						providerJobId,
+						defaultLanguage,
+					);
 
 					if (job.status === "ready" && job.result?.image) {
 						setState({
